@@ -22,7 +22,7 @@
 
 <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container">
-        <span class="navbar-brand fw-bold">🚀 Painel Simplificado</span>
+        <span class="navbar-brand fw-bold">🚀 Painel de Ofertas</span>
         <div class="d-flex align-items-center gap-3">
             <span class="text-white d-none d-sm-block">Olá, {{ usuario }}</span>
             <a href="/logout" class="btn btn-outline-danger btn-sm">Sair</a>
@@ -38,24 +38,24 @@
             <div class="row g-3">
                 
                 <div class="col-12">
-                    <label class="fw-bold text-danger small">03 - Chamada (Título Chamativo)</label>
-                    <input type="text" name="chamada" class="form-control fw-bold" placeholder="Ex: PREÇÃOOOOO! CORRE..." required>
+                    <label class="fw-bold text-sucess small">Chamada (Título Chamativo) *</label>
+                    <input type="text" name="chamada" class="form-control fw-bold" placeholder="" required>
                 </div>
 
                 <div class="col-12">
                     <div class="form-check form-switch p-2 bg-light border rounded">
                         <input class="form-check-input ms-2" type="checkbox" name="frete_gratis" id="frete" checked>
-                        <label class="form-check-label fw-bold ms-2 small" for="frete">04 - Frete Grátis</label>
+                        <label class="form-check-label fw-bold ms-2 small" for="frete">Frete Grátis</label>
                     </div>
                 </div>
 
                 <div class="col-12">
-                     <label class="fw-bold small">05 - Descrição do Produto</label>
+                     <label class="fw-bold small">Descrição do Produto *</label>
                     <textarea name="descricao" class="form-control" rows="2" placeholder="Ex: Fritadeira Airfryer Mondial..."></textarea>
                 </div>
 
                 <div class="col-6">
-                    <label class="fw-bold small">06 - Preço</label>
+                    <label class="fw-bold small">Preço *</label>
                     <input type="text" name="valor" class="form-control" placeholder="Ex: 77,45" required>
                 </div>
 
@@ -65,9 +65,8 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="fw-bold text-primary small">07 - Link de Compra (Gera a Foto 📸)</label>
+                    <label class="fw-bold text-primary small">Link de Compra (Gera a Foto 📸) *</label>
                     <input type="text" name="link_compra" class="form-control" placeholder="Cole o link da Shopee/Mercado Livre aqui" required>
-                    <div class="form-text small">Cole o link completo. O WhatsApp vai gerar a foto automaticamente a partir dele.</div>
                 </div>
                 
                 <div class="col-12 mt-3">
@@ -138,16 +137,29 @@
         const ids = Array.from(checks).map(c => c.value);
         if (ids.length === 0) { alert("Selecione um item!"); return; }
 
-        const res = await fetch('/gerar_mensagem', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ids: ids })
-        });
-        const data = await res.json();
-        fila = data.mensagens;
-        
-        if (fila.length > 0) {
-            document.getElementById('barra-envio').style.display = 'block';
-            atualizarStatus();
+        // Feedback Visual
+        const btn = document.querySelector('button[onclick="iniciarEnvio()"]');
+        const txtOriginal = btn.innerText;
+        btn.innerText = "Carregando...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/gerar_mensagem', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ids: ids })
+            });
+            const data = await res.json();
+            fila = data.mensagens;
+            
+            if (fila.length > 0) {
+                document.getElementById('barra-envio').style.display = 'block';
+                atualizarStatus();
+            }
+        } catch (e) {
+            alert("Erro ao conectar. Recarregue a página.");
+        } finally {
+            btn.innerText = txtOriginal;
+            btn.disabled = false;
         }
     }
 
@@ -162,24 +174,3 @@
             btn.disabled = false;
         } else {
             txt.innerText = "Concluído!";
-            btn.innerText = "Pronto";
-            btn.disabled = true;
-            setTimeout(cancelarEnvio, 3000);
-        }
-    }
-
-    function enviarProxima() {
-        if (fila.length === 0) return;
-        const msg = fila.shift();
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        atualizarStatus();
-    }
-
-    function cancelarEnvio() {
-        fila = [];
-        document.getElementById('barra-envio').style.display = 'none';
-    }
-</script>
-
-</body>
-</html>
