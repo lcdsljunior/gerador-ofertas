@@ -6,15 +6,16 @@
     <title>Painel de Ofertas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; padding-bottom: 120px; }
+        body { background-color: #f0f2f5; padding-bottom: 140px; }
         .card-custom { border-radius: 12px; border: none; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .btn-whats { background-color: #25D366; color: white; border: none; font-weight: bold; }
         .btn-whats:hover { background-color: #128c7e; color: white; }
         
+        /* Barra de Envio Fixa */
         #barra-envio {
             display: none; position: fixed; bottom: 0; left: 0; width: 100%;
             background: #fff; border-top: 5px solid #25D366; padding: 15px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 9999;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.2); z-index: 9999;
         }
     </style>
 </head>
@@ -39,13 +40,13 @@
                 
                 <div class="col-12">
                     <label class="fw-bold text-danger small">Chamada (Título Chamativo) *</label>
-                    <input type="text" name="chamada" class="form-control fw-bold" placeholder="Ex: PREÇÃOOOOO! CORRE..." required>
+                    <input type="text" name="chamada" class="form-control fw-bold" placeholder="" required>
                 </div>
 
                 <div class="col-12">
                     <div class="form-check form-switch p-2 bg-light border rounded">
                         <input class="form-check-input ms-2" type="checkbox" name="frete_gratis" id="frete" checked>
-                        <label class="form-check-label fw-bold ms-2 small" for="frete">Frete Grátis *</label>
+                        <label class="form-check-label fw-bold ms-2 small" for="frete">Frete Grátis</label>
                     </div>
                 </div>
 
@@ -65,7 +66,7 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="fw-bold text-primary small">07 - Link de Compra (Gera a Foto 📸)</label>
+                    <label class="fw-bold text-primary small">Link de Compra (Gera a Foto 📸) *</label>
                     <input type="text" name="link_compra" class="form-control" placeholder="Cole o link da Shopee/Mercado Livre aqui" required>
                 </div>
                 
@@ -78,8 +79,8 @@
 
     <div class="d-flex justify-content-between align-items-center mb-2 px-2">
         <h6 class="mb-0 fw-bold text-secondary">ITENS PRONTOS</h6>
-        <button onclick="iniciarEnvio()" class="btn btn-dark btn-sm shadow-sm">
-            Enviar Disparos 🚀
+        <button onclick="iniciarEnvio()" class="btn btn-dark btn-sm shadow-sm" id="btn-preparar">
+            Preparar Envio 🚀
         </button>
     </div>
     
@@ -115,16 +116,19 @@
 </div>
 
 <div id="barra-envio">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div>
-            <strong class="d-block">Fila de Disparo</strong>
-            <span class="small text-muted" id="status-texto">Preparando...</span>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <strong class="d-block">Fila de Disparo</strong>
+                <span class="small text-muted" id="status-texto">Preparando...</span>
+            </div>
+            <button onclick="cancelarEnvio()" class="btn btn-close"></button>
         </div>
-        <div class="d-flex gap-2">
-            <button onclick="cancelarEnvio()" class="btn btn-outline-secondary btn-sm">Cancelar</button>
-            <button onclick="enviarProxima()" id="btn-disparo" class="btn btn-success fw-bold px-4">
-                Enviar Próxima ➤
-            </button>
+        
+        <div class="d-grid gap-2">
+            <a id="link-whatsapp" href="#" target="_blank" class="btn btn-success fw-bold py-3 shadow-sm" onclick="avancarFila()">
+                ABRIR WHATSAPP ➤
+            </a>
         </div>
     </div>
 </div>
@@ -137,9 +141,7 @@
         const ids = Array.from(checks).map(c => c.value);
         if (ids.length === 0) { alert("Selecione um item!"); return; }
 
-        // Feedback Visual
-        const btn = document.querySelector('button[onclick="iniciarEnvio()"]');
-        const txtOriginal = btn.innerText;
+        const btn = document.getElementById('btn-preparar');
         btn.innerText = "Carregando...";
         btn.disabled = true;
 
@@ -153,58 +155,66 @@
             
             if (fila.length > 0) {
                 document.getElementById('barra-envio').style.display = 'block';
-                atualizarStatus();
+                atualizarLink();
             }
         } catch (e) {
-            alert("Erro ao conectar. Recarregue a página.");
+            alert("Erro ao conectar.");
         } finally {
-            btn.innerText = txtOriginal;
+            btn.innerText = "Preparar Envio 🚀";
             btn.disabled = false;
         }
     }
 
-    function atualizarStatus() {
-        const total = fila.length;
-        const txt = document.getElementById('status-texto');
-        const btn = document.getElementById('btn-disparo');
-
-        if (total > 0) {
-            txt.innerText = `Faltam ${total} ofertas.`;
-            btn.innerText = `Enviar WhatsApp (${total})`;
-            btn.disabled = false;
-        } else {
-            txt.innerText = "Concluído!";
-            btn.innerText = "Pronto";
-            btn.disabled = true;
-            setTimeout(cancelarEnvio, 3000);
+    // Função que configura o LINK do botão
+    function atualizarLink() {
+        if (fila.length === 0) {
+            finalizarEnvio();
+            return;
         }
-    }
-
-    function enviarProxima() {
-        if (fila.length === 0) return;
-        const msg = fila.shift();
         
-        // --- DETECÇÃO DE DISPOSITIVO ---
+        const mensagem = fila[0]; // Pega a próxima mensagem
+        const total = fila.length;
+        
+        // Configura o texto da tela
+        document.getElementById('status-texto').innerText = `Faltam ${total} ofertas na fila.`;
+        const btnLink = document.getElementById('link-whatsapp');
+        btnLink.innerText = `ENVIAR AGORA (${total})`;
+        btnLink.classList.remove('disabled', 'btn-secondary');
+        btnLink.classList.add('btn-success');
+
+        // GERA O LINK DO WHATSAPP AQUI
+        // Detecta se é celular ou PC
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         
-        let url;
+        let urlWhats;
         if (isMobile) {
-            // Celular: usa API (abre o app)
-            url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+            urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
         } else {
-            // PC: usa WEB (abre o site direto)
-            url = `https://web.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+            urlWhats = `https://web.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
         }
+        
+        // Define o href do botão. Agora ele é um link real!
+        btnLink.href = urlWhats;
+    }
 
-        // Abre a janela
-        const novaJanela = window.open(url, '_blank');
+    // Função executada quando você CLICA no link
+    function avancarFila() {
+        // Espera 1 segundo (enquanto abre a aba) e já prepara o próximo
+        setTimeout(() => {
+            fila.shift(); // Remove o que acabou de ser enviado
+            atualizarLink(); // Prepara o botão para o próximo
+        }, 1000);
+    }
 
-        // VERIFICA SE FOI BLOQUEADO (POP-UP)
-        if (!novaJanela || novaJanela.closed || typeof novaJanela.closed == 'undefined') {
-            alert("⚠️ ATENÇÃO: SEU NAVEGADOR BLOQUEOU O WHATSAPP!\n\nOlhe para o topo da tela (na barra de endereço), clique no ícone com 'X' vermelho e selecione 'SEMPRE PERMITIR'.\n\nDepois tente enviar novamente.");
-        }
-
-        atualizarStatus();
+    function finalizarEnvio() {
+        document.getElementById('status-texto').innerText = "Tudo enviado!";
+        const btnLink = document.getElementById('link-whatsapp');
+        btnLink.innerText = "CONCLUÍDO";
+        btnLink.classList.remove('btn-success');
+        btnLink.classList.add('btn-secondary', 'disabled');
+        btnLink.href = "#"; // Desativa o link
+        
+        setTimeout(cancelarEnvio, 3000);
     }
 
     function cancelarEnvio() {
