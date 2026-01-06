@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
 # --- CONFIGURAÇÕES ---
-app.config['SECRET_KEY'] = 'segredo-absoluto'
+app.config['SECRET_KEY'] = 'segredo-absoluto-sistema'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///produtos.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -29,7 +29,6 @@ class Produto(db.Model):
     frete_gratis = db.Column(db.Boolean, default=False)
     link_compra = db.Column(db.String(800), nullable=False)
     cupom = db.Column(db.String(50))
-    # Removemos 'link_foto' manual para não quebrar o preview oficial
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -90,19 +89,15 @@ def gerar_mensagem():
         linha_frete = "📦 Frete Grátis todo o Brasil\n\n" if prod.frete_gratis else ""
         linha_cupom = f"\n➡ Use o cupom: {prod.cupom}" if prod.cupom else ""
         
-        # --- LAYOUT EXATO QUE FUNCIONA ---
-        # A Mágica: O Link de Compra está no final.
-        # O WhatsApp lê o link, gera a Foto (01) e o Nome do Site (02) e coloca no TOPO da bolha.
-        
+        # Link de Compra no final para o WhatsApp gerar o preview (Foto + Título)
         msg = (
             f"{prod.chamada}\n\n"        # 03
             f"{linha_frete}"             # 04
             f"• {prod.descricao}\n\n"    # 05
             f"🔥 R$ {prod.valor}\n\n"     # 06
-            f"🛒 {prod.link_compra}"     # 07 (Gerador da Foto)
+            f"🛒 {prod.link_compra}"     # 07
             f"{linha_cupom}"
         )
-        
         lista_mensagens.append(msg)
 
     return jsonify({'mensagens': lista_mensagens})
@@ -116,4 +111,5 @@ def deletar(id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Roda na porta 5001 para evitar erro de soquete
+    app.run(debug=True, port=5001)
